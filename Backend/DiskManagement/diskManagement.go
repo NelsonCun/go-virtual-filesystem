@@ -15,10 +15,11 @@ import (
 
 // Estructura para representar una partición montada
 type MountedPartition struct {
-	Path   string
-	Name   string
-	ID     string
-	Status byte // 0: no montada, 1: montada
+	Path     string
+	Name     string
+	ID       string
+	Status   byte // 0: no montada, 1: montada
+	LoggedIn bool // true: usuario ha iniciado sesión, false: no ha iniciado sesión
 }
 
 // Mapa para almacenar las particiones montadas, organizadas por disco
@@ -41,6 +42,25 @@ func PrintMountedPartitions() {
 		}
 	}
 	fmt.Println("")
+}
+
+// Función para obtener las particiones montadas
+func GetMountedPartitions() map[string][]MountedPartition {
+	return mountedPartitions
+}
+
+// Función para marcar una partición como logueada
+func MarkPartitionAsLoggedIn(id string) {
+	for diskID, partitions := range mountedPartitions {
+		for i, partition := range partitions {
+			if partition.ID == id {
+				mountedPartitions[diskID][i].LoggedIn = true
+				fmt.Printf("Partición con ID %s marcada como logueada.\n", id)
+				return
+			}
+		}
+	}
+	fmt.Printf("No se encontró la partición con ID %s para marcarla como logueada.\n", id)
 }
 
 func Mkdisk(size int, fit string, unit string, path string) {

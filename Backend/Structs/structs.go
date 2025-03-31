@@ -77,6 +77,28 @@ type Superblock struct {
 	S_block_start       int32    // Guardará el inicio de la tabla de bloques
 }
 
+func PrintSuperblock(sb Superblock) {
+	fmt.Println("====== Superblock ======")
+	fmt.Printf("S_filesystem_type: %d\n", sb.S_filesystem_type)
+	fmt.Printf("S_inodes_count: %d\n", sb.S_inodes_count)
+	fmt.Printf("S_blocks_count: %d\n", sb.S_blocks_count)
+	fmt.Printf("S_free_blocks_count: %d\n", sb.S_free_blocks_count)
+	fmt.Printf("S_free_inodes_count: %d\n", sb.S_free_inodes_count)
+	fmt.Printf("S_mtime: %s\n", string(sb.S_mtime[:]))
+	fmt.Printf("S_umtime: %s\n", string(sb.S_umtime[:]))
+	fmt.Printf("S_mnt_count: %d\n", sb.S_mnt_count)
+	fmt.Printf("S_magic: 0x%X\n", sb.S_magic) // Usamos 0x%X para mostrarlo en formato hexadecimal
+	fmt.Printf("S_inode_size: %d\n", sb.S_inode_size)
+	fmt.Printf("S_block_size: %d\n", sb.S_block_size)
+	fmt.Printf("S_fist_ino: %d\n", sb.S_fist_ino)
+	fmt.Printf("S_first_blo: %d\n", sb.S_first_blo)
+	fmt.Printf("S_bm_inode_start: %d\n", sb.S_bm_inode_start)
+	fmt.Printf("S_bm_block_start: %d\n", sb.S_bm_block_start)
+	fmt.Printf("S_inode_start: %d\n", sb.S_inode_start)
+	fmt.Printf("S_block_start: %d\n", sb.S_block_start)
+	fmt.Println("========================")
+}
+
 type Inode struct {
 	I_uid   int32
 	I_gid   int32
@@ -89,8 +111,30 @@ type Inode struct {
 	I_perm  [3]byte
 }
 
+func PrintInode(inode Inode) {
+	fmt.Println("====== Inode ======")
+	fmt.Printf("I_uid: %d\n", inode.I_uid)
+	fmt.Printf("I_gid: %d\n", inode.I_gid)
+	fmt.Printf("I_size: %d\n", inode.I_size)
+	fmt.Printf("I_atime: %s\n", string(inode.I_atime[:]))
+	fmt.Printf("I_ctime: %s\n", string(inode.I_ctime[:]))
+	fmt.Printf("I_mtime: %s\n", string(inode.I_mtime[:]))
+	fmt.Printf("I_type: %s\n", string(inode.I_type[:]))
+	fmt.Printf("I_perm: %s\n", string(inode.I_perm[:]))
+	fmt.Printf("I_block: %v\n", inode.I_block)
+	fmt.Println("===================")
+}
+
 type Folderblock struct {
 	B_content [4]Content
+}
+
+func PrintFolderblock(folderblock Folderblock) {
+	fmt.Println("====== Folderblock ======")
+	for i, content := range folderblock.B_content {
+		fmt.Printf("Content %d: Name: %s, Inodo: %d\n", i, string(content.B_name[:]), content.B_inodo)
+	}
+	fmt.Println("=========================")
 }
 
 type Content struct {
@@ -102,6 +146,20 @@ type Fileblock struct {
 	B_content [64]byte
 }
 
+func PrintFileblock(fileblock Fileblock) {
+	fmt.Println("====== Fileblock ======")
+	fmt.Printf("B_content: %s\n", string(fileblock.B_content[:]))
+	fmt.Println("=======================")
+}
+
 type Pointerblock struct {
 	B_pointers [16]int32
+}
+
+func PrintPointerblock(pointerblock Pointerblock) {
+	fmt.Println("====== Pointerblock ======")
+	for i, pointer := range pointerblock.B_pointers {
+		fmt.Printf("Pointer %d: %d\n", i, pointer)
+	}
+	fmt.Println("=========================")
 }
