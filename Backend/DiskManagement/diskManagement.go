@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"proyecto1/Structs"
 	"proyecto1/Utilities"
 	"strings"
@@ -114,13 +113,11 @@ func Mkdisk(size int, fit string, unit string, path string) {
 		return
 	}
 
-	// Escribir los 0 en el archivo
-
-	// create array of byte(0)
-	buffer := make([]byte, size) // Crea un slice de bytes con `size` ceros
-	_, err = file.Write(buffer)
-	if err != nil {
-		fmt.Println("Error: ", err)
+	// Set the virtual disk size without allocating a RAM buffer proportional
+	// to the requested capacity.
+	if err := file.Truncate(int64(size)); err != nil {
+		fmt.Println("Error: No se pudo establecer el tamaño del disco:", err)
+		return
 	}
 
 	// Crear MBR
@@ -253,7 +250,7 @@ func Fdisk(size int, path string, name string, unit string, type_ string, fit st
 	}
 
 	// Validar que no se exceda el número máximo de particiones primarias y extendidas
-	if totalPartitions >= 4 {
+	if type_ != "l" && totalPartitions >= 4 {
 		fmt.Println("Error: No se pueden crear más de 4 particiones primarias o extendidas en total.")
 		return
 	}
@@ -270,10 +267,14 @@ func Fdisk(size int, path string, name string, unit string, type_ string, fit st
 		return
 	}
 
-	// Validar que el tamaño de la nueva partición no exceda el tamaño del disco
-	if usedSpace+int32(size) > TempMBR.MbrSize {
-		fmt.Println("Error: No hay suficiente espacio en el disco para crear esta partición.")
-		return
+	// Primary/extended partitions consume top-level disk space. Include the
+	// MBR itself and use int64 arithmetic to avoid overflow.
+	if type_ != "l" {
+		requiredEnd := int64(binary.Size(TempMBR)) + int64(usedSpace) + int64(size)
+		if requiredEnd > int64(TempMBR.MbrSize) {
+			fmt.Println("Error: No hay suficiente espacio en el disco para crear esta partición.")
+			return
+		}
 	}
 
 	// Determinar la posición de inicio de la nueva partición
@@ -313,43 +314,72 @@ func Fdisk(size int, path string, name string, unit string, type_ string, fit st
 		}
 	}
 
-	// Manejar la creación de particiones lógicas dentro de una partición extendida
+	// Create logical partitions only inside the extended partition.
 	if type_ == "l" {
+		logicalCreated := false
+
 		for i := 0; i < 4; i++ {
-			if TempMBR.Partitions[i].Type[0] == 'e' {
-				ebrPos := TempMBR.Partitions[i].Start
-				var ebr Structs.EBR
-				for {
-					Utilities.ReadObject(file, &ebr, int64(ebrPos))
-					if ebr.PartNext == -1 {
-						break
-					}
-					ebrPos = ebr.PartNext
-				}
-
-				// Calcular la posición de inicio de la nueva partición lógica
-				newEBRPos := ebr.PartStart + ebr.PartSize                    // El nuevo EBR se coloca después de la partición lógica anterior
-				logicalPartitionStart := newEBRPos + int32(binary.Size(ebr)) // El inicio de la partición lógica es justo después del EBR
-
-				// Ajustar el siguiente EBR
-				ebr.PartNext = newEBRPos
-				Utilities.WriteObject(file, ebr, int64(ebrPos))
-
-				// Crear y escribir el nuevo EBR
-				newEBR := Structs.EBR{
-					PartFit:   fit[0],
-					PartStart: logicalPartitionStart,
-					PartSize:  int32(size),
-					PartNext:  -1,
-				}
-				copy(newEBR.PartName[:], name)
-				Utilities.WriteObject(file, newEBR, int64(newEBRPos))
-
-				// Imprimir el nuevo EBR creado
-				fmt.Println("Nuevo EBR creado:")
-				Structs.PrintEBR(newEBR)
-				break
+			if TempMBR.Partitions[i].Type[0] != 'e' {
+				continue
 			}
+
+			extended := TempMBR.Partitions[i]
+			ebrPos := extended.Start
+			var ebr Structs.EBR
+
+			for {
+				if err := Utilities.ReadObject(file, &ebr, int64(ebrPos)); err != nil {
+					fmt.Println("Error: No se pudo leer el EBR:", err)
+					return
+				}
+				if ebr.PartNext == -1 {
+					break
+				}
+				ebrPos = ebr.PartNext
+			}
+
+			newEBRPos := ebr.PartStart + ebr.PartSize
+			logicalPartitionStart := newEBRPos + int32(binary.Size(ebr))
+			extendedEnd := int64(extended.Start) + int64(extended.Size)
+			logicalEnd := int64(logicalPartitionStart) + int64(size)
+
+			if logicalEnd > extendedEnd {
+				fmt.Println("Error: No hay suficiente espacio dentro de la partición extendida.")
+				return
+			}
+
+			// The initial empty EBR is replaced in place. Subsequent EBRs are
+			// linked from the previous descriptor.
+			if ebr.PartSize > 0 {
+				ebr.PartNext = newEBRPos
+				if err := Utilities.WriteObject(file, ebr, int64(ebrPos)); err != nil {
+					fmt.Println("Error: No se pudo actualizar la cadena EBR:", err)
+					return
+				}
+			}
+
+			newEBR := Structs.EBR{
+				PartFit:   fit[0],
+				PartStart: logicalPartitionStart,
+				PartSize:  int32(size),
+				PartNext:  -1,
+			}
+			copy(newEBR.PartName[:], name)
+
+			if err := Utilities.WriteObject(file, newEBR, int64(newEBRPos)); err != nil {
+				fmt.Println("Error: No se pudo escribir el nuevo EBR:", err)
+				return
+			}
+
+			fmt.Println("Nuevo EBR creado:")
+			Structs.PrintEBR(newEBR)
+			logicalCreated = true
+			break
+		}
+
+		if !logicalCreated {
+			fmt.Println("Error: No se encontró una partición extendida válida.")
+			return
 		}
 	}
 
@@ -451,23 +481,19 @@ func Mount(path string, name string) {
 	var letter byte
 
 	if len(mountedPartitionsInDisk) == 0 {
-		// Es un nuevo disco, asignar la siguiente letra disponible
-		if len(mountedPartitions) == 0 {
-			letter = 'a'
-		} else {
-			lastDiskID := getLastDiskID()
-			lastLetter := mountedPartitions[lastDiskID][0].ID[len(mountedPartitions[lastDiskID][0].ID)-1]
-			letter = lastLetter + 1
+		var ok bool
+		letter, ok = nextDiskLetter()
+		if !ok {
+			fmt.Println("Error: No hay letras disponibles para montar otro disco.")
+			return
 		}
 	} else {
-		// Utilizar la misma letra que las otras particiones montadas en el mismo disco
 		letter = mountedPartitionsInDisk[0].ID[len(mountedPartitionsInDisk[0].ID)-1]
 	}
 
-	// Incrementar el número para esta partición
-	carnet := "201222010" // Cambiar su carnet aquí
-	lastTwoDigits := carnet[len(carnet)-2:]
-	partitionID := fmt.Sprintf("%s%d%c", lastTwoDigits, partitionIndex+1, letter)
+	// Generate a compact, neutral 4-byte partition ID.
+	// The layout is: vd + partition number + disk letter (for example vd1a).
+	partitionID := fmt.Sprintf("vd%d%c", partitionIndex+1, letter)
 
 	// Actualizar el estado de la partición a montada y asignar el ID
 	partition.Status[0] = '1'
@@ -499,64 +525,38 @@ func Mount(path string, name string) {
 
 }
 
-// Función para obtener el ID del último disco montado
-func getLastDiskID() string {
-	var lastDiskID string
-	for diskID := range mountedPartitions {
-		lastDiskID = diskID
+// nextDiskLetter returns the first unused mount letter deterministically.
+func nextDiskLetter() (byte, bool) {
+	used := make(map[byte]bool)
+
+	for _, partitions := range mountedPartitions {
+		if len(partitions) == 0 {
+			continue
+		}
+		id := partitions[0].ID
+		if len(id) == 0 {
+			continue
+		}
+		letter := id[len(id)-1]
+		if letter >= 'a' && letter <= 'z' {
+			used[letter] = true
+		}
 	}
-	return lastDiskID
+
+	for letter := byte('a'); letter <= byte('z'); letter++ {
+		if !used[letter] {
+			return letter, true
+		}
+	}
+	return 0, false
 }
 
 func generateDiskID(path string) string {
 	return strings.ToLower(path)
 }
 
-// Carpeta donde se almacenan los discos
-const diskFolder = "/Users/nelson/Disks"
-
 func Mounted() {
 	fmt.Println("======INICIO MOUNTED======")
-	// Obtener la lista de discos .mia
-	files, err := filepath.Glob(filepath.Join(diskFolder, "*.mia"))
-	if err != nil {
-		fmt.Println("Error al buscar discos:", err)
-		return
-	}
-
-	fmt.Println("Particiones montadas:")
-
-	// Recorrer cada disco
-	for _, file := range files {
-		checkMountedPartitions(file)
-	}
-
+	PrintMountedPartitions()
 	fmt.Println("======FIN MOUNTED======")
-}
-
-// Función para leer un disco y verificar sus particiones montadas
-func checkMountedPartitions(diskPath string) {
-	file, err := os.Open(diskPath)
-	if err != nil {
-		fmt.Println("Error al abrir el disco:", err)
-		return
-	}
-	defer file.Close()
-
-	// Leer el MBR
-	var mbr Structs.MBR
-	err = binary.Read(file, binary.LittleEndian, &mbr)
-	if err != nil {
-		fmt.Println("Error al leer el MBR del disco:", err)
-		return
-	}
-
-	// Verificar las particiones montadas
-	for _, partition := range mbr.Partitions {
-		if partition.Status[0] == '1' { // Suponiendo que '1' indica montada
-			// Obtener el nombre de la partición y limpiarlo
-			Id := string(partition.Id[:])
-			fmt.Print(Id + "\n")
-		}
-	}
 }
