@@ -3,10 +3,10 @@ package FileSystem
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/NelsonCun/go-virtual-filesystem/DiskManagement"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities"
 	"os"
-	"proyecto1/DiskManagement"
-	"proyecto1/Structs"
-	"proyecto1/Utilities"
 	"strings"
 	"time"
 )

@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities"
 	"math/rand"
 	"os"
-	"proyecto1/Structs"
-	"proyecto1/Utilities"
 	"strings"
 	"time"
 )

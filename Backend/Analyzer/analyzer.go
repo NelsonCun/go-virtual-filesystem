@@ -4,14 +4,14 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/NelsonCun/go-virtual-filesystem/DiskManagement"
+	"github.com/NelsonCun/go-virtual-filesystem/FileSystem"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/User"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities" // Import the Utilities package
 	"os"
 	"os/exec"
 	"path/filepath"
-	"proyecto1/DiskManagement"
-	"proyecto1/FileSystem"
-	"proyecto1/Structs"
-	"proyecto1/User"
-	"proyecto1/Utilities" // Import the Utilities package
 	"regexp"
 	"strings"
 )

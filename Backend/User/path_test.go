@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"proyecto1/DiskManagement"
-	"proyecto1/FileSystem"
-	"proyecto1/Structs"
-	"proyecto1/Utilities"
+	"github.com/NelsonCun/go-virtual-filesystem/DiskManagement"
+	"github.com/NelsonCun/go-virtual-filesystem/FileSystem"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities"
 )
 
 func TestInitSearchMissingPathReturnsNotFound(t *testing.T) {

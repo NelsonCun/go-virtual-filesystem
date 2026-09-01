@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"proyecto1/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
 )
 
 func TestWriteReadObjectRoundTrip(t *testing.T) {

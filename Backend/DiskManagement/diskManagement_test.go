@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"proyecto1/Structs"
-	"proyecto1/Utilities"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities"
 )
 
 func resetMountedPartitionsForTest() {

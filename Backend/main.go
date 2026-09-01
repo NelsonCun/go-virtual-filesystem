@@ -1,7 +1,7 @@
 package main
 
 import (
-	"proyecto1/Analyzer"
+	"github.com/NelsonCun/go-virtual-filesystem/Analyzer"
 )
 
 func main() {

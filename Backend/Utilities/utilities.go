@@ -3,10 +3,10 @@ package Utilities
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
 	"html"
 	"os"
 	"path/filepath"
-	"proyecto1/Structs"
 	"strings"
 )
 

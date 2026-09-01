@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"proyecto1/DiskManagement"
-	"proyecto1/Structs"
-	"proyecto1/Utilities"
+	"github.com/NelsonCun/go-virtual-filesystem/DiskManagement"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities"
 )
 
 func TestMkfsCreatesExt2Metadata(t *testing.T) {
