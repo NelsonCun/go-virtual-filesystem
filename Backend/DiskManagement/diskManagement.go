@@ -169,12 +169,15 @@ func Mrdisk(path string) {
 	fmt.Println("======INICIO MRDISK======")
 	fmt.Println("Path:", path)
 
-	// Eliminar archivo
-	err := os.Remove(path)
-	if err != nil {
+	if err := os.Remove(path); err != nil {
 		fmt.Println("Error: ", err)
 		return
 	}
+
+	// Mount state is process-local. Removing the backing disk must also remove
+	// its in-memory registry entry so callers cannot observe a stale mount.
+	delete(mountedPartitions, generateDiskID(path))
+
 	fmt.Println("======FIN MRDISK======")
 }
 
