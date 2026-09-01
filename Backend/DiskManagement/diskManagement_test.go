@@ -199,3 +199,23 @@ func TestLogicalPartitionUsesExtendedPartitionCapacity(t *testing.T) {
 		)
 	}
 }
+
+func TestMrdiskClearsMountedState(t *testing.T) {
+	resetMountedPartitionsForTest()
+	path := createTestDisk(t, 128)
+	Fdisk(32, path, "data", "k", "p", "ff")
+	Mount(path, "data")
+
+	if len(GetMountedPartitions()) != 1 {
+		t.Fatalf("precondition: expected one mounted disk")
+	}
+
+	Mrdisk(path)
+
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("virtual disk should be removed, stat error=%v", err)
+	}
+	if len(GetMountedPartitions()) != 0 {
+		t.Fatalf("removed disk left stale mount state: %#v", GetMountedPartitions())
+	}
+}

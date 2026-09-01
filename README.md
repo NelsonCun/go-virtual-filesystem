@@ -131,7 +131,7 @@ It checks:
 2. `go vet ./...`;
 3. the full regression suite with `go test -count=1 ./...`.
 
-The repository currently contains **14 deterministic Go tests** covering:
+The repository currently contains **18 deterministic Go tests** covering:
 
 - command parsing;
 - binary structure round trips;
@@ -141,7 +141,9 @@ The repository currently contains **14 deterministic Go tests** covering:
 - logical partition capacity inside an extended partition;
 - mount IDs and persisted mount state;
 - EXT2-style metadata and first-free pointers;
-- missing-path semantics;
+- deterministic root-path resolution and missing-path semantics;
+- mount-registry cleanup after a virtual disk is removed;
+- single-block append persistence and overflow rejection;
 - exact password matching in the simulated user store.
 
 ## Key invariants
@@ -199,7 +201,7 @@ Known limitations:
 
 - EXT3 is not implemented.
 - Indirect inode blocks are not implemented.
-- Appending data across additional file blocks is incomplete.
+- File append support is intentionally limited to the inode's existing first direct block; allocating additional file blocks is not implemented.
 - `file` and `ls` report modes are placeholders.
 - Fit values are accepted and persisted, but allocation does not yet implement a
   complete best-fit/first-fit/worst-fit free-hole strategy.

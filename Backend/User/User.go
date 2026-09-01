@@ -141,26 +141,32 @@ func Login(user string, pass string, id string) {
 func InitSearch(path string, file *os.File, tempSuperblock Structs.Superblock) int32 {
 	fmt.Println("======Start BUSQUEDA INICIAL ======")
 	fmt.Println("path:", path)
-	// path = "/ruta/nueva"
 
-	// split the path by /
-	TempStepsPath := strings.Split(path, "/")
-	StepsPath := TempStepsPath[1:]
+	rawSteps := strings.Split(path, "/")
+	stepsPath := make([]string, 0, len(rawSteps))
+	for _, step := range rawSteps {
+		if step != "" {
+			stepsPath = append(stepsPath, step)
+		}
+	}
 
-	fmt.Println("StepsPath:", StepsPath, "len(StepsPath):", len(StepsPath))
-	for _, step := range StepsPath {
+	fmt.Println("StepsPath:", stepsPath, "len(StepsPath):", len(stepsPath))
+	for _, step := range stepsPath {
 		fmt.Println("step:", step)
 	}
 
-	var Inode0 Structs.Inode
-	// Read object from bin file
-	if err := Utilities.ReadObject(file, &Inode0, int64(tempSuperblock.S_inode_start)); err != nil {
+	var inode0 Structs.Inode
+	if err := Utilities.ReadObject(file, &inode0, int64(tempSuperblock.S_inode_start)); err != nil {
 		return -1
 	}
 
-	fmt.Println("======End BUSQUEDA INICIAL======")
+	if len(stepsPath) == 0 {
+		fmt.Println("======End BUSQUEDA INICIAL======")
+		return 0
+	}
 
-	return SarchInodeByPath(StepsPath, Inode0, file, tempSuperblock)
+	fmt.Println("======End BUSQUEDA INICIAL======")
+	return SarchInodeByPath(stepsPath, inode0, file, tempSuperblock)
 }
 
 // stack
@@ -254,32 +260,67 @@ func GetInodeFileData(Inode Structs.Inode, file *os.File, tempSuperblock Structs
 	return content
 }
 
-// MKUSER
-func AppendToFileBlock(inode *Structs.Inode, newData string, file *os.File, superblock Structs.Superblock) error {
-	// Leer el contenido existente del archivo utilizando la función GetInodeFileData
-	existingData := GetInodeFileData(*inode, file, superblock)
-
-	// Concatenar el nuevo contenido
-	fullData := existingData + newData
-
-	// Asegurarse de que el contenido no exceda el tamaño del bloque
-	if len(fullData) > len(inode.I_block)*binary.Size(Structs.Fileblock{}) {
-		// Si el contenido excede, necesitas manejar bloques adicionales
-		return fmt.Errorf("el tamaño del archivo excede la capacidad del bloque actual y no se ha implementado la creación de bloques adicionales")
+// AppendToFileBlock appends data within the inode's existing first direct
+// file block. Allocating additional blocks is intentionally not implemented.
+// inodeIndex is explicit because inode-table and block-table indexes are
+// independent storage addresses.
+func AppendToFileBlock(
+	inodeIndex int32,
+	inode *Structs.Inode,
+	newData string,
+	file *os.File,
+	superblock Structs.Superblock,
+) error {
+	if inode == nil {
+		return fmt.Errorf("inode cannot be nil")
+	}
+	if inodeIndex < 0 || inodeIndex >= superblock.S_inodes_count {
+		return fmt.Errorf("inode index %d is outside the inode table", inodeIndex)
 	}
 
-	// Escribir el contenido actualizado en el bloque existente
-	var updatedFileBlock Structs.Fileblock
-	copy(updatedFileBlock.B_content[:], fullData)
-	if err := Utilities.WriteObject(file, updatedFileBlock, int64(superblock.S_block_start+inode.I_block[0]*int32(binary.Size(Structs.Fileblock{})))); err != nil {
-		return fmt.Errorf("error al escribir el bloque actualizado: %v", err)
+	blockIndex := inode.I_block[0]
+	if blockIndex < 0 || blockIndex >= superblock.S_blocks_count {
+		return fmt.Errorf("first direct block index %d is invalid", blockIndex)
 	}
 
-	// Actualizar el tamaño del inodo
-	inode.I_size = int32(len(fullData))
-	if err := Utilities.WriteObject(file, *inode, int64(superblock.S_inode_start+inode.I_block[0]*int32(binary.Size(Structs.Inode{})))); err != nil {
-		return fmt.Errorf("error al actualizar el inodo: %v", err)
+	blockSize := int32(binary.Size(Structs.Fileblock{}))
+	if inode.I_size < 0 || inode.I_size > blockSize {
+		return fmt.Errorf(
+			"inode size %d is incompatible with single-block append support",
+			inode.I_size,
+		)
 	}
 
+	newSize := inode.I_size + int32(len(newData))
+	if newSize > blockSize {
+		return fmt.Errorf(
+			"append would require additional file blocks: current=%d append=%d capacity=%d",
+			inode.I_size,
+			len(newData),
+			blockSize,
+		)
+	}
+
+	blockOffset := int64(superblock.S_block_start + blockIndex*blockSize)
+	var block Structs.Fileblock
+	if err := Utilities.ReadObject(file, &block, blockOffset); err != nil {
+		return fmt.Errorf("read current file block: %w", err)
+	}
+
+	copy(block.B_content[inode.I_size:newSize], newData)
+	if err := Utilities.WriteObject(file, block, blockOffset); err != nil {
+		return fmt.Errorf("write updated file block: %w", err)
+	}
+
+	updatedInode := *inode
+	updatedInode.I_size = newSize
+
+	inodeSize := int32(binary.Size(Structs.Inode{}))
+	inodeOffset := int64(superblock.S_inode_start + inodeIndex*inodeSize)
+	if err := Utilities.WriteObject(file, updatedInode, inodeOffset); err != nil {
+		return fmt.Errorf("write updated inode: %w", err)
+	}
+
+	*inode = updatedInode
 	return nil
 }
