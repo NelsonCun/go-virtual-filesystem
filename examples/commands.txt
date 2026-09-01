@@ -1,0 +1,9 @@
+mkdisk -size=2048 -unit=k -fit=ff -path="/tmp/virtual-disks/portfolio-demo.mia"
+fdisk -size=512 -unit=k -type=p -fit=ff -path="/tmp/virtual-disks/portfolio-demo.mia" -name=data
+fdisk -size=1024 -unit=k -type=e -fit=ff -path="/tmp/virtual-disks/portfolio-demo.mia" -name=extended
+fdisk -size=256 -unit=k -type=l -fit=ff -path="/tmp/virtual-disks/portfolio-demo.mia" -name=logical1
+fdisk -size=256 -unit=k -type=l -fit=ff -path="/tmp/virtual-disks/portfolio-demo.mia" -name=logical2
+mount -path="/tmp/virtual-disks/portfolio-demo.mia" -name=data
+mounted
+mkfs -id=vd1a -type=full -fs=2fs
+login -user=root -pass=123 -id=vd1a

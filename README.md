@@ -112,6 +112,8 @@ mkfs -id=vd1a -type=full -fs=2fs
 login -user=root -pass=123 -id=vd1a
 ```
 
+A longer portable command sample is available in [`examples/commands.txt`](examples/commands.txt). It uses `/tmp/virtual-disks/` rather than machine-specific paths.
+
 The `root / 123` credential above belongs only to the filesystem simulation
 created by `mkfs`; it is not an external service credential.
 
