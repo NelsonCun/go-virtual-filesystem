@@ -3,17 +3,16 @@ package User
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/NelsonCun/go-virtual-filesystem/DiskManagement"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities"
 	"os"
-	"proyecto1/DiskManagement"
-	"proyecto1/Structs"
-	"proyecto1/Utilities"
 	"strings"
 )
 
 func Login(user string, pass string, id string) {
 	fmt.Println("======Start LOGIN======")
 	fmt.Println("User:", user)
-	fmt.Println("Pass:", pass)
 	fmt.Println("Id:", id)
 
 	// Verificar si el usuario ya está logueado buscando en las particiones montadas
@@ -97,6 +96,10 @@ func Login(user string, pass string, id string) {
 
 	// Buscar el archivo de usuarios /users.txt -> retorna índice del Inodo
 	indexInode := InitSearch("/users.txt", file, tempSuperblock)
+	if indexInode < 0 {
+		fmt.Println("Error: No se pudo localizar /users.txt")
+		return
+	}
 
 	var crrInode Structs.Inode
 	// Leer el Inodo desde el archivo binario
@@ -116,7 +119,7 @@ func Login(user string, pass string, id string) {
 		words := strings.Split(line, ",")
 
 		if len(words) == 5 {
-			if (strings.Contains(words[3], user)) && (strings.Contains(words[4], pass)) {
+			if words[3] == user && words[4] == pass {
 				login = true
 				break
 			}
@@ -191,7 +194,8 @@ func SarchInodeByPath(StepsPath []string, Inode Structs.Inode, file *os.File, te
 					// fmt.Println("Folder found======")
 					fmt.Println("Folder === Name:", string(folder.B_name[:]), "B_inodo", folder.B_inodo)
 
-					if strings.Contains(string(folder.B_name[:]), SearchedName) {
+					folderName := strings.TrimRight(string(folder.B_name[:]), "\x00")
+					if folderName == SearchedName {
 
 						fmt.Println("len(StepsPath)", len(StepsPath), "StepsPath", StepsPath)
 						if len(StepsPath) == 0 {
@@ -217,7 +221,7 @@ func SarchInodeByPath(StepsPath []string, Inode Structs.Inode, file *os.File, te
 	}
 
 	fmt.Println("======End BUSQUEDA INODO POR PATH======")
-	return 0
+	return -1
 }
 
 func GetInodeFileData(Inode Structs.Inode, file *os.File, tempSuperblock Structs.Superblock) string {

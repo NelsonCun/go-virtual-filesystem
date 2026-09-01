@@ -3,11 +3,12 @@ package FileSystem
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/NelsonCun/go-virtual-filesystem/DiskManagement"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities"
 	"os"
-	"proyecto1/DiskManagement"
-	"proyecto1/Structs"
-	"proyecto1/Utilities"
 	"strings"
+	"time"
 )
 
 func Mkfs(id string, type_ string, fs_ string) {
@@ -98,8 +99,12 @@ func Mkfs(id string, type_ string, fs_ string) {
 	newSuperblock.S_blocks_count = 3 * n
 	newSuperblock.S_free_blocks_count = 3*n - 2
 	newSuperblock.S_free_inodes_count = n - 2
-	copy(newSuperblock.S_mtime[:], "07/03/2025")
-	copy(newSuperblock.S_umtime[:], "07/03/2025")
+	// Inode 0/block 0 are root; inode 1/block 1 store users.txt.
+	newSuperblock.S_fist_ino = 2
+	newSuperblock.S_first_blo = 2
+	formattedDate := time.Now().Format("2006-01-02 15:04")
+	copy(newSuperblock.S_mtime[:], formattedDate)
+	copy(newSuperblock.S_umtime[:], formattedDate)
 	newSuperblock.S_mnt_count = 1
 	newSuperblock.S_magic = 0xEF53
 	newSuperblock.S_inode_size = int32(binary.Size(Structs.Inode{}))
@@ -112,7 +117,7 @@ func Mkfs(id string, type_ string, fs_ string) {
 	newSuperblock.S_block_start = newSuperblock.S_inode_start + n*newSuperblock.S_inode_size
 
 	if fs_ == "2fs" {
-		create_ext2(n, TempMBR.Partitions[index], newSuperblock, "07/03/2025", file)
+		create_ext2(n, TempMBR.Partitions[index], newSuperblock, formattedDate, file)
 	} else {
 		fmt.Println("EXT3 no está soportado.")
 	}

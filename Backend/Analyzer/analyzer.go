@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/NelsonCun/go-virtual-filesystem/DiskManagement"
+	"github.com/NelsonCun/go-virtual-filesystem/FileSystem"
+	"github.com/NelsonCun/go-virtual-filesystem/Structs"
+	"github.com/NelsonCun/go-virtual-filesystem/User"
+	"github.com/NelsonCun/go-virtual-filesystem/Utilities" // Import the Utilities package
 	"os"
 	"os/exec"
 	"path/filepath"
-	"proyecto1/DiskManagement"
-	"proyecto1/FileSystem"
-	"proyecto1/Structs"
-	"proyecto1/Utilities" // Import the Utilities package
 	"regexp"
 	"strings"
 )
@@ -19,8 +20,8 @@ var re = regexp.MustCompile(`-(\w+)=("[^"]+"|\S+)`)
 
 //-nombre=valor
 
-//input := "mkdisk -size=3000 -unit=K -fit=BF -path=/home/bang/Disks/disk1.mia"
-// "mkdisk -size=3000 -unit=K -fit=BF -path=/Users/nelson/Disks/disk1.mia"
+//input := "mkdisk -size=3000 -unit=K -fit=BF -path=/tmp/virtual-disks/disk1.mia"
+// "mkdisk -size=3000 -unit=K -fit=BF -path=/tmp/virtual-disks/disk1.mia"
 
 /*
 parts[0] es "mkdisk"
@@ -37,7 +38,7 @@ func getCommandAndParams(input string) (string, string) {
 
 	/*Después de procesar la entrada:
 	command será "mkdisk".
-	params será "-size=3000 -unit=K -fit=BF -path=/home/bang/Disks/disk1.mia".*/
+	params será "-size=3000 -unit=K -fit=BF -path=/tmp/virtual-disks/disk1.mia".*/
 }
 
 func Analyze() {
@@ -57,7 +58,7 @@ func Analyze() {
 
 		AnalyzeCommand(command, params)
 
-		//mkdisk -size=3000 -unit=K -fit=BF -path="/home/bang/Disks/disk1.mia"
+		//mkdisk -size=3000 -unit=K -fit=BF -path="/tmp/virtual-disks/disk1.mia"
 	}
 }
 
@@ -79,7 +80,7 @@ func AnalyzeCommand(command string, params string) {
 	case "login":
 		fn_login(params)
 	case "rep":
-		fmt.Println("COMANDO REP")
+		fn_rep(params)
 	default:
 		fmt.Println("Error: Comando inválido o no encontrado")
 	}
